@@ -1,0 +1,17 @@
+# Silnik dołączany lokalnie / artefakty builda (NIE trafiają do repo)
+libs/
+dist/
+build/
+.build-venv/
+.venv/
+*.spec
+__pycache__/
+*.pyc
+*.exe
+
+# Wyniki kompresji i pliki tymczasowe
+*_skompresowany*.pdf
+*_max*MB.pdf
+selftest_result.json
+_diagnostyka.log
+icon_preview.png

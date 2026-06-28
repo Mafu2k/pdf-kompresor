@@ -1,0 +1,6 @@
+# Zaleznosc runtime
+pymupdf>=1.27
+
+# Do budowania .exe (build.bat) potrzebne sa dodatkowo:
+#   pyinstaller
+#   pillow        (tylko do wygenerowania ikony przez make_icon, opcjonalnie)
