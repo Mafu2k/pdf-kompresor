@@ -14,6 +14,9 @@ obrazy, a tekst i grafikę wektorową (linie, rysunki) zostawia ostre.
 - **Nie jesteś programistą?** Pobierz `PDF Kompresor.exe` z zakładki
   [**Releases**](../../releases), kliknij dwa razy — i już. Nie wymaga
   instalacji, Pythona ani internetu.
+  > Przy pierwszym uruchomieniu Windows może pokazać „Windows chronił Twój
+  > komputer" (SmartScreen) — to normalne dla aplikacji bez płatnego podpisu.
+  > Kliknij **Więcej informacji → Uruchom mimo to**.
 - **Jesteś programistą?** Zobacz [Uruchomienie ze źródeł](#uruchomienie-ze-źródeł).
 
 ## Funkcje
