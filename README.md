@@ -1,66 +1,73 @@
 # PDF Kompresor
 
-Prosty i szybki kompresor PDF z ładnym interfejsem (Windows). Zmniejsza ciężkie
-PDF-y (skany, plakaty, dużo zdjęć) **bez psucia jakości** — recompresuje tylko
-obrazy, a tekst i grafikę wektorową (linie, rysunki) zostawia ostre.
+Mały program na Windows do zmniejszania wagi plików PDF. Zrobiłem go, bo żaden
+darmowy kompresor online nie dawał rady z naprawdę ciężkimi plikami — plakat z
+grafikami potrafił ważyć 100+ MB, a strony albo odbijały się od limitu rozmiaru,
+albo masakrowały jakość zdjęć.
 
-> Na realnym pliku — plakacie B1 (105 MB, obrazy do 707 DPI) — wynik to
-> **105 MB → ~39 MB (−63%) w ~45 s**, wizualnie bez różnicy przy 300 DPI.
+Ten program zmniejsza **tylko obrazy** w PDF (to one zajmują miejsce), a tekst i
+grafikę wektorową zostawia w spokoju — dzięki temu napisy i cienkie linie zawsze
+pozostają ostre.
 
----
+![Okno programu](docs/screenshot.png)
 
-## Dla kogo
+## Pobranie (bez instalacji)
 
-- **Nie jesteś programistą?** Pobierz `PDF Kompresor.exe` z zakładki
-  [**Releases**](../../releases), kliknij dwa razy — i już. Nie wymaga
-  instalacji, Pythona ani internetu.
-  > Przy pierwszym uruchomieniu Windows może pokazać „Windows chronił Twój
-  > komputer" (SmartScreen) — to normalne dla aplikacji bez płatnego podpisu.
-  > Kliknij **Więcej informacji → Uruchom mimo to**.
-- **Jesteś programistą?** Zobacz [Uruchomienie ze źródeł](#uruchomienie-ze-źródeł).
+Gotowy `PDF Kompresor.exe` jest w zakładce **[Releases](../../releases)** — nie
+wymaga Pythona ani instalacji, pobierasz i klikasz.
 
-## Funkcje
+> Przy pierwszym uruchomieniu Windows SmartScreen może pokazać ostrzeżenie (plik
+> nie jest podpisany płatnym certyfikatem). Kliknij *Więcej informacji →
+> Uruchom mimo to*.
 
-- **Tryb Jakość** — gotowe poziomy: `Super (1:1)`, `Wysoka`, `Średnia`, `Niska`.
-- **Tryb Docelowy rozmiar** — wpisujesz ile MB ma ważyć plik, a program sam
-  dobiera DPI (binary search), żeby się zmieścić przy najlepszej jakości.
-- **Skala szarości** (opcja) — usuwa kolor dla jeszcze mniejszego pliku.
-- Zdjęcia i tekst **nieuszkodzone** — zmniejszane są tylko obrazy powyżej
-  docelowego DPI; mniejsze zostają nietknięte.
-- Działa **offline**, oryginał **nie jest nadpisywany**.
+## Jak używać
 
-## Jak to działa
+1. Wskaż plik PDF.
+2. Wybierz jakość albo wpisz docelowy rozmiar (np. „max 35 MB").
+3. Kliknij **Kompresuj**.
 
-Silnik [PyMuPDF](https://pymupdf.readthedocs.io/) (`Document.rewrite_images`)
-zmniejsza obrazy powyżej progu DPI do wartości docelowej i przekodowuje je do
-JPEG o zadanej jakości. Tekst i wektory nie są ruszane, dlatego napisy i cienkie
-linie pozostają idealnie ostre. To główny powód, dla którego ciężkie skany i
-plakaty chudną wielokrotnie bez widocznej utraty jakości.
-
-Presety (DPI / jakość JPEG): Super `300/95`, Wysoka `300/90`, Średnia `200/85`,
-Niska `120/72`.
+Wynik zapisuje się obok oryginału jako `nazwa_skompresowany.pdf` — oryginał
+zostaje nietknięty.
 
 ## Uruchomienie ze źródeł
 
-Wymaga Pythona 3.9+ (z Tkinter, który jest w standardowej instalacji Windows).
+Potrzebny Python 3.9+ (z Tkinter, czyli standardowa instalacja na Windows):
 
-```bash
+```
 pip install -r requirements.txt
 python pdf_kompresor.py
 ```
 
-## Budowanie samodzielnego .exe
+## Budowanie własnego .exe
 
-```bash
+```
 build.bat
 ```
 
-Wynik: `dist/PDF Kompresor.exe` — jeden plik z wbudowanym Pythonem i silnikiem,
-działa na każdym Windows 64-bit bez instalacji.
+Powstaje `dist/PDF Kompresor.exe` z wbudowanym Pythonem i silnikiem — jeden plik,
+działa na każdym Windowsie 64-bit.
+
+## Jak to działa
+
+Pod spodem jest [PyMuPDF](https://pymupdf.readthedocs.io/) i jego
+`rewrite_images`: obrazy powyżej zadanego DPI są zmniejszane i przekodowywane do
+JPEG o ustalonej jakości, a wszystko poniżej progu zostaje bez zmian.
+
+| Tryb        | DPI | Jakość JPEG |
+|-------------|----:|------------:|
+| Super (1:1) | 300 |          95 |
+| Wysoka      | 300 |          90 |
+| Średnia     | 200 |          85 |
+| Niska       | 120 |          72 |
+
+Tryb „docelowy rozmiar" dobiera DPI metodą połowienia przedziału, żeby zmieścić
+plik w zadanym limicie MB przy możliwie najlepszej jakości.
+
+Konkret z życia: plakat B1 ze zdjęciami w 707 DPI, **105 MB → ~39 MB (−63%) w
+~45 s**, bez widocznej różnicy przy druku.
 
 ## Licencja
 
-[**AGPL-3.0**](LICENSE). Program korzysta z biblioteki **PyMuPDF / MuPDF**
-(© [Artifex Software](https://artifex.com/), AGPL-3.0), dlatego całość jest
-rozpowszechniana na tej samej licencji. Jeśli potrzebujesz licencji komercyjnej
-(zamkniętej), wymagana jest komercyjna licencja PyMuPDF od Artifex.
+[AGPL-3.0](LICENSE). Program korzysta z PyMuPDF / MuPDF (© Artifex Software),
+która jest na AGPL — dlatego całość również. Do zastosowań komercyjnych z
+zamkniętym kodem potrzebna jest komercyjna licencja PyMuPDF.
