@@ -7,7 +7,7 @@ albo masakrowały jakość zdjęć.
 
 Ten program zmniejsza **tylko obrazy** w PDF (to one zajmują miejsce), a tekst i
 grafikę wektorową zostawia w spokoju — dzięki temu napisy i cienkie linie zawsze
-pozostają ostre.
+pozostają ostre. Możesz wrzucić **kilka plików naraz** — przetwarzane są po kolei.
 
 ![Okno programu](docs/screenshot.png)
 
@@ -22,9 +22,9 @@ wymaga Pythona ani instalacji, pobierasz i klikasz.
 
 ## Jak używać
 
-1. Wskaż plik PDF.
+1. Wskaż jeden lub kilka plików PDF.
 2. Wybierz jakość albo wpisz docelowy rozmiar (np. „max 35 MB").
-3. Kliknij **Kompresuj**.
+3. Kliknij **Kompresuj** — pliki robią się po kolei.
 
 Wynik zapisuje się obok oryginału jako `nazwa_skompresowany.pdf` — oryginał
 zostaje nietknięty.

@@ -21,7 +21,7 @@ import subprocess
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-VERSION = "1.0"
+VERSION = "1.1"
 FROZEN = getattr(sys, "frozen", False)
 APP_DIR = (os.path.dirname(sys.executable) if FROZEN
            else os.path.dirname(os.path.abspath(__file__)))
@@ -87,6 +87,15 @@ def unique_path(path):
     return f"{base}_{i}{ext}"
 
 
+def plural_pliki(n):
+    """Polska odmiana: 1 plik, 2-4 pliki, 5+ plików."""
+    if n == 1:
+        return "plik"
+    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        return "pliki"
+    return "plików"
+
+
 def quality_for_dpi(dpi):
     """DPI -> sensowna jakość JPEG (tryb docelowego rozmiaru)."""
     q = 50 + (dpi - 60) / (300 - 60) * (95 - 50)
@@ -126,7 +135,7 @@ def compress(src, dst, dpi, quality, gray=False):
 class App:
     def __init__(self, root):
         self.root = root
-        self.src = None
+        self.srcs = []
         self.q = queue.Queue()
         self.busy = False
         self.last_output = None
@@ -170,16 +179,16 @@ class App:
 
         tk.Label(wrap, text="PDF Kompresor", bg=BG, fg=FG,
                  font=("Segoe UI Semibold", 22)).pack(anchor="w")
-        tk.Label(wrap, text="Zmniejsz ciężki PDF — maks. jakość, zdjęcia i tekst bez strat.",
+        tk.Label(wrap, text="Zmniejsz ciężkie PDF-y — maks. jakość, zdjęcia i tekst bez strat.",
                  bg=BG, fg=MUTED, font=("Segoe UI", 10)).pack(anchor="w", pady=(2, 16))
 
-        # --- karta: plik ---
+        # --- karta: plik(i) ---
         filecard = self._card(wrap)
-        self.file_lbl = tk.Label(filecard, text="Nie wybrano pliku",
+        self.file_lbl = tk.Label(filecard, text="Nie wybrano plików  (możesz wybrać kilka naraz)",
                                  bg=CARD, fg=MUTED, font=("Segoe UI", 10),
-                                 anchor="w", justify="left", wraplength=420)
+                                 anchor="w", justify="left", wraplength=400)
         self.file_lbl.pack(side="left", fill="x", expand=True, padx=(14, 10), pady=14)
-        self._btn(filecard, "Wybierz PDF", self.pick_file, primary=False).pack(
+        self._btn(filecard, "Wybierz pliki", self.pick_files, primary=False).pack(
             side="right", padx=(0, 12), pady=12)
 
         # --- karta: tryb ---
@@ -216,9 +225,8 @@ class App:
         ent.bind("<FocusIn>", lambda e: self.mode.set("rozmiar"))
         tk.Label(trow, text="MB", bg=CARD, fg=MUTED,
                  font=("Segoe UI", 10)).pack(side="left")
-        tk.Label(inner, text="Skrypt sam dobierze DPI, by zmieścić plik w limicie "
-                 "przy najlepszej jakości.", bg=CARD, fg=MUTED,
-                 font=("Segoe UI", 9)).pack(anchor="w", padx=24, pady=(4, 0))
+        tk.Label(inner, text="Limit stosowany do każdego pliku osobno. Program sam dobierze DPI.",
+                 bg=CARD, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w", padx=24, pady=(4, 0))
 
         # --- opcja: skala szarości ---
         tk.Checkbutton(wrap, text="Konwertuj do skali szarości (jeszcze mniejszy plik)",
@@ -237,7 +245,7 @@ class App:
                                anchor="w", justify="left", wraplength=540)
         self.status.pack(fill="x")
 
-        self.open_btn = self._btn(wrap, "Otwórz folder z plikiem",
+        self.open_btn = self._btn(wrap, "Otwórz folder z plikami",
                                   self.open_folder, primary=False)
         # pokazywany dopiero po sukcesie
 
@@ -268,18 +276,29 @@ class App:
         return b
 
     # --- akcje ------------------------------------------------------------
-    def pick_file(self):
-        path = filedialog.askopenfilename(
-            title="Wybierz plik PDF",
+    def pick_files(self):
+        paths = filedialog.askopenfilenames(
+            title="Wybierz pliki PDF (możesz zaznaczyć kilka)",
             filetypes=[("Pliki PDF", "*.pdf"), ("Wszystkie pliki", "*.*")])
-        if path:
-            self.src = path
-            size = mb(os.path.getsize(path))
-            self.file_lbl.config(
-                text=f"{os.path.basename(path)}\n{size:.1f} MB", fg=FG)
+        if paths:
+            self.srcs = list(paths)
+            self._show_selection()
             self.open_btn.pack_forget()
             self.status.config(text="", fg=MUTED)
             self.bar["value"] = 0
+
+    def _show_selection(self):
+        n = len(self.srcs)
+        if n == 1:
+            sz = mb(os.path.getsize(self.srcs[0]))
+            self.file_lbl.config(text=f"{os.path.basename(self.srcs[0])}\n{sz:.1f} MB", fg=FG)
+        else:
+            tot = sum(os.path.getsize(p) for p in self.srcs)
+            names = ", ".join(os.path.basename(p) for p in self.srcs[:3])
+            if n > 3:
+                names += f" … (+{n - 3})"
+            self.file_lbl.config(
+                text=f"{n} {plural_pliki(n)} · łącznie {mb(tot):.1f} MB\n{names}", fg=FG)
 
     def start(self):
         if self.busy:
@@ -289,8 +308,8 @@ class App:
                                  "Nie znaleziono PyMuPDF. Uruchom przez plik .exe "
                                  "albo zostaw folder „libs” obok skryptu.")
             return
-        if not self.src:
-            messagebox.showwarning("Brak pliku", "Najpierw wybierz plik PDF.")
+        if not self.srcs:
+            messagebox.showwarning("Brak plików", "Najpierw wybierz pliki PDF.")
             return
         target = None
         if self.mode.get() == "rozmiar":
@@ -314,27 +333,39 @@ class App:
         t.start()
 
     def _work(self, target):
-        try:
-            src = self.src
-            base, _ = os.path.splitext(src)
-            orig = os.path.getsize(src)
-            gray = self.gray.get()
+        srcs = list(self.srcs)
+        n = len(srcs)
+        gray = self.gray.get()
+        results = []   # (orig, new, dst, note)
+        fails = []     # "nazwa: blad"
+        for idx, src in enumerate(srcs, 1):
+            name = os.path.basename(src)
+            prefix = f"Plik {idx}/{n} — {name}: " if n > 1 else ""
+            try:
+                base, _ = os.path.splitext(src)
+                orig = os.path.getsize(src)
+                if target is None:
+                    key = self.preset.get()
+                    _k, label, dpi, q, _d = next(p for p in PRESETS if p[0] == key)
+                    dst = unique_path(f"{base}_skompresowany.pdf")
+                    self.q.put(("status",
+                                f"{prefix}kompresja ({label})... to może chwilę potrwać.", MUTED))
+                    new = compress(src, dst, dpi, q, gray)
+                    note = None
+                else:
+                    dst, new, note = self._compress_to_target(src, base, orig, target, gray, prefix)
+                results.append((orig, new, dst, note))
+                self.last_output = dst
+            except Exception as e:
+                fails.append(f"{name}: {e}")
 
-            if target is None:
-                key = self.preset.get()
-                _k, label, dpi, q, _d = next(p for p in PRESETS if p[0] == key)
-                dst = unique_path(f"{base}_skompresowany.pdf")
-                self.q.put(("status",
-                            f"Kompresja obrazów ({label})... to może chwilę potrwać.", MUTED))
-                compress(src, dst, dpi, q, gray)
-                self._finish(orig, dst)
-            else:
-                self._work_target(src, base, orig, target, gray)
-        except Exception as e:
-            self.q.put(("error", str(e)))
+        if not results:
+            self.q.put(("error", "; ".join(fails) or "nie udało się skompresować"))
+        else:
+            self.q.put(("done", self._summary(results, fails)))
 
-    def _work_target(self, src, base, orig, target_mb, gray):
-        """Binary search po DPI -> najwyższa jakość mieszcząca się w limicie."""
+    def _compress_to_target(self, src, base, orig, target_mb, gray, prefix):
+        """Binary search po DPI -> najwyższa jakość mieszcząca się w limicie. Dla jednego pliku."""
         target_bytes = target_mb * 1024 * 1024
         tmpdir = tempfile.mkdtemp(prefix="pdfkompresor_")
         lo, hi = 60, 300
@@ -348,11 +379,9 @@ class App:
                 dpi = (lo + hi) // 2
                 q = quality_for_dpi(dpi)
                 tmp = os.path.join(tmpdir, f"try_{dpi}.pdf")
-                self.q.put(("status",
-                            f"Próba {attempt}: DPI {dpi} (jakość {q})...", MUTED))
+                self.q.put(("status", f"{prefix}próba {attempt}: DPI {dpi} (jakość {q})...", MUTED))
                 size = compress(src, tmp, dpi, q, gray)
-                self.q.put(("status",
-                            f"Próba {attempt}: DPI {dpi} -> {mb(size):.1f} MB", MUTED))
+                self.q.put(("status", f"{prefix}próba {attempt}: DPI {dpi} -> {mb(size):.1f} MB", MUTED))
                 if smallest is None or size < smallest[2]:
                     smallest = (dpi, tmp, size)
                 if size <= target_bytes:
@@ -367,26 +396,36 @@ class App:
             shutil.copyfile(chosen[1], dst)
             note = None
             if best is None:
-                note = (f"Nie udało się zejść do {target_mb:.0f} MB nawet przy "
-                        f"DPI 60 — zapisano najmniejszy możliwy wynik.")
-            self._finish(orig, dst, note=note)
+                note = (f"nie udało się zejść do {target_mb:.0f} MB — zapisano "
+                        f"najmniejszy możliwy wynik")
+            return dst, os.path.getsize(dst), note
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
-    def _finish(self, orig, dst, note=None):
-        new = os.path.getsize(dst)
-        saved = (1 - new / orig) * 100 if orig else 0
-        self.last_output = dst
-        if new >= orig:
-            msg = (f"Gotowe, ale plik nie zmalał ({mb(orig):.1f} MB -> {mb(new):.1f} MB).\n"
-                   f"Ten PDF ma mało obrazów do kompresji albo są już małe.\n"
-                   f"{os.path.basename(dst)}")
-        else:
-            msg = (f"Gotowe!  {mb(orig):.1f} MB  ->  {mb(new):.1f} MB"
-                   f"   (oszczędność {saved:.0f}%)\n{os.path.basename(dst)}")
-        if note:
-            msg += "\n" + note
-        self.q.put(("done", msg))
+    def _summary(self, results, fails):
+        n_ok = len(results)
+        tot_o = sum(r[0] for r in results)
+        tot_n = sum(r[1] for r in results)
+        if n_ok == 1 and not fails:
+            orig, new, dst, note = results[0]
+            saved = (1 - new / orig) * 100 if orig else 0
+            if new >= orig:
+                msg = (f"Gotowe, ale plik nie zmalał ({mb(orig):.1f} MB -> {mb(new):.1f} MB).\n"
+                       f"Ten PDF ma mało obrazów do kompresji albo są już małe.\n"
+                       f"{os.path.basename(dst)}")
+            else:
+                msg = (f"Gotowe!  {mb(orig):.1f} MB  ->  {mb(new):.1f} MB"
+                       f"   (oszczędność {saved:.0f}%)\n{os.path.basename(dst)}")
+            if note:
+                msg += "\n(" + note + ")"
+            return msg
+
+        saved = (1 - tot_n / tot_o) * 100 if tot_o else 0
+        msg = (f"Gotowe! Skompresowano {n_ok} {plural_pliki(n_ok)}.\n"
+               f"Łącznie {mb(tot_o):.1f} MB  ->  {mb(tot_n):.1f} MB   (oszczędność {saved:.0f}%)")
+        if fails:
+            msg += (f"\nNie powiodło się: {len(fails)} — " + "; ".join(fails))
+        return msg
 
     # --- komunikacja wątek -> UI -----------------------------------------
     def _poll_queue(self):
